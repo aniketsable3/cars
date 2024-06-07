@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Object Detection</title>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(to right, #1c92d2, #f2fcfe);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.5s;
+        }
+
+        body.dark-mode {
+            background: #121212;
+            color: #fff;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            width: 100%;
+            padding: 1rem 2rem;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: background 0.5s;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            animation: fadeInDown 1s ease-in-out;
+        }
+
+        .content {
+            margin-top: 5rem;
+            width: 90%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 1s ease-in-out;
+            transition: background 0.5s;
+        }
+
+        .content.dark-mode {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: #000;
+            border-radius: 15px;
+        }
+
+        .video-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            margin: -25px 0 0 -25px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .controls {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .controls button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s, color 0.3s;
+            position: relative;
+        }
+
+        .controls button:hover {
+            background: #555;
+            color: #fff;
+        }
+
+        .controls button.fullscreen {
+            background: #1c92d2;
+            color: #fff;
+        }
+
+        .controls button.pause-play {
+            background: #f2fcfe;
+            color: #333;
+        }
+
+        .controls button.dark-mode-toggle {
+            background: #333;
+            color: #fff;
+        }
+
+        .tooltip {
+            visibility: hidden;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .controls button:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 1rem 2rem;
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+            transition: background 0.5s;
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 1rem;
+            }
+
+            footer p {
+                font-size: 0.875rem;
+            }
+
+            .controls button {
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>YOLO Object Detection Video Feed</h1>
+    </header>
+    <div class="content">
+        <div class="video-container">
+            <div class="spinner" id="spinner"></div>
+            <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="YOLO Video Feed" onload="hideSpinner()">
+        </div>
+        <div class="controls">
+            <button class="fullscreen" onclick="toggleFullscreen()">
+                Fullscreen
+                <span class="tooltip">Toggle fullscreen mode</span>
+            </button>
+            <button class="pause-play" onclick="togglePausePlay()">
+                Pause
+                <span class="tooltip">Pause/Play video feed</span>
+            </button>
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+                Dark Mode
+                <span class="tooltip">Toggle dark/light mode</span>
+            </button>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2024 YOLO Object Detection. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const videoFeed = document.getElementById('videoFeed');
+        const body = document.body;
+        let isPaused = false;
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                videoFeed.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function togglePausePlay() {
+            isPaused = !isPaused;
+            videoFeed.src = isPaused ? '' : '{{ url_for("video_feed") }}';
+            event.target.textContent = isPaused ? 'Play' : 'Pause';
+        }
+
+        function toggleDarkMode() {
+            body.classList.toggle('dark-mode');
+            document.querySelector('.content').classList.toggle('dark-mode');
+            event.target.textContent = body.classList.contains('dark-mode') ? 'Light Mode' : 'Dark Mode';
+        }
+
+        function hideSpinner() {
+            document.getElementById('spinner').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
